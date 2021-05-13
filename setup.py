@@ -6,7 +6,7 @@ with open("README.md", "r") as fh:
 setuptools.setup(
     name="notion-sdk-py",
     packages=["notion"],
-    version="1.0.0",
+    version="0.0.1",
     license="MIT",
     description="A simple and easy to use client for the Notion API for python",
     author="blue-hope",
@@ -20,6 +20,7 @@ setuptools.setup(
         "notion-api",
         "notion-lib",
     ],
+    install_requires=open("requirements.txt").read().splitlines(),
     classifiers=[
         "Development Status :: 3 - Alpha",
         "Intended Audience :: Developers",
