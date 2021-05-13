@@ -1,5 +1,8 @@
 import setuptools
 
+with open("README.md", "r") as fh:
+    long_description = fh.read()
+
 setuptools.setup(
     name="notion-sdk-py",
     packages=["notion"],
@@ -8,7 +11,8 @@ setuptools.setup(
     description="A simple and easy to use client for the Notion API for python",
     author="blue-hope",
     author_email="ms7045436@gmail.com",
-    long_description=open("README.md").read(),
+    long_description=long_description,
+    long_description_content_type="text/markdown",
     url="https://github.com/blue-hope/notion-sdk-py",
     keywords=[
         "notion",
