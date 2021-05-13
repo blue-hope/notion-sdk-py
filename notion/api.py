@@ -67,7 +67,7 @@ class Notion(object):
         req = self.session.get(url)
         return req.json()
 
-    def list_user(self):
+    def list_users(self):
         url = f"{self.API_ENDPOINT}/users"
         req = self.session.get(url)
         return req.json()
