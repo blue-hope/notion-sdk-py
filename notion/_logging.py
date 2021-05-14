@@ -1,6 +1,7 @@
 import logging
 from enum import Enum
 
+
 class LogLevel(Enum):
     DEBUG = logging.DEBUG
     INFO = logging.INFO
@@ -8,6 +9,7 @@ class LogLevel(Enum):
     ERROR = logging.ERROR
 
 
-def makeConsoleLogger(level: LogLevel) -> logging.Logger:
+def make_console_logger(level: LogLevel) -> logging.Logger:
     logger = logging.getLogger()
-    logger.setLevel(level)
+    logger.setLevel(level.value)
+    return logger

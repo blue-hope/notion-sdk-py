@@ -1,20 +1,20 @@
-from enum import Enum
 import logging
-from notion.errors import build_request_error
 import httpx
-from typing import Union
+from enum import Enum
 from dataclasses import dataclass
-from notion.logging import LogLevel, make_console_logger
+from typing import Any
+from notion.errors import build_request_error
+from notion._logging import LogLevel, make_console_logger
 
 
 @dataclass
 class ClientOptions:
-    auth: str
-    timeout_ms: int
-    base_url: str
-    log_level: LogLevel
-    logger: logging.Logger
-    notion_version: str
+    auth: str = None
+    timeout_ms: int = 60_000
+    base_url: str = "https://api.notion.com"
+    log_level: LogLevel = LogLevel.WARN
+    logger: logging.Logger = None
+    notion_version: str = None
 
 
 class Method(Enum):
@@ -29,22 +29,21 @@ class RequestParameters:
     method: Method
     query: dict
     body: dict
-    auth: str
+    auth: str = None
 
 
 class Client:
     DEFAULT_NOTION_VERSION = "2021-05-13"
 
-    def __init__(self, options: Union[ClientOptions, dict]):
+    def __init__(self, options: ClientOptions):
         self.auth = options.auth
-        self.logLevel = options.logLevel or LogLevel.WARN
-        self.logger = options.logger or make_console_logger(self.logLevel)
+        self.log_level = options.log_level
+        self.logger = options.logger or make_console_logger(self.log_level)
 
-        prefix_url = (options.base_url or "https://api.notion.com") + "/v1/"
-        timeout = options.timeout_ms or 60_000
+        prefix_url = options.base_url + "/v1/"
+        timeout = options.timeout_ms
         notion_version = options.notion_version or Client.DEFAULT_NOTION_VERSION
 
-        transport = httpx.HTTPTransport(retries=0)
         self.http = httpx.AsyncClient(
             base_url=prefix_url,
             timeout=timeout,
@@ -52,8 +51,10 @@ class Client:
                 "Notion-Version": notion_version,
                 "user-agent": "notion-sdk-py/0.0.1",
             },
-            transport=transport,
         )
+
+    async def close(self):
+        await self.http.aclose()
 
     def _auth_as_header(self, auth: str) -> httpx.Headers:
         headers: httpx.Headers = {}
@@ -64,15 +65,16 @@ class Client:
 
     async def request(self, request_parameters: RequestParameters):
         try:
-            response = await self.http.build_request(
+            request = self.http.build_request(
                 method=request_parameters.method,
-                path=request_parameters.path,
+                url=request_parameters.path,
                 data=request_parameters.body,
                 params=request_parameters.query,
                 headers=self._auth_as_header(request_parameters.auth),
             )
+            response = await self.http.send(request=request)
             response.raise_for_status()
-            return response
+            return response.json()
         except Exception as e:
             request_error = build_request_error(e)
             if request_error is None:
@@ -80,60 +82,30 @@ class Client:
 
             raise request_error
 
-    def prepare_credentials(self):
-        self.HEADERS["Authorization"] = f"Bearer {self.auth}"
+    def log(self, level: LogLevel, message: str, extra_info: dict[str, Any]):
+        if level >= self.log_level:
+            self.logger.log(level, message, extra=extra_info)
 
-    def retrieve_database(self, database_id):
-        url = f"{self.API_ENDPOINT}/databases/{database_id}"
-        req = self.session.get(url)
-        return req.json()
+    @property
+    def blocks(self):
+        from notion.apis import BlocksClient
 
-    def query_database(self, database_id, data):
-        url = f"{self.API_ENDPOINT}/databases/{database_id}/query"
-        req = self.session.post(url, data=data)
-        return req.json()
+        return BlocksClient(self)
 
-    def list_databases(self, params):
-        url = f"{self.API_ENDPOINT}/databases"
-        req = self.session.get(url, params=params)
-        return req.json()
+    @property
+    def databases(self):
+        from notion.apis import DatabasesClient
 
-    def retrieve_page(self, page_id):
-        url = f"{self.API_ENDPOINT}/pages/{page_id}"
-        req = self.session.get(url)
-        return req.json()
+        return DatabasesClient(self)
 
-    def create_page(self, data):
-        url = f"{self.API_ENDPOINT}/pages"
-        req = self.session.post(url, data=data)
-        return req.json()
+    @property
+    def pages(self):
+        from notion.apis import PagesClient
 
-    def update_page(self, page_id, data):
-        url = f"{self.API_ENDPOINT}/pages/{page_id}"
-        req = self.session.patch(url, data=data)
-        return req.json()
+        return PagesClient(self)
 
-    def retrieve_block(self, block_id, params):
-        url = f"{self.API_ENDPOINT}/blocks/{block_id}/children"
-        req = self.session.get(url, params=params)
-        return req.json()
+    @property
+    def users(self):
+        from notion.apis import UsersClient
 
-    def append_block(self, block_id, data):
-        url = f"{self.API_ENDPOINT}/blocks/{block_id}/children"
-        req = self.session.patch(url, data=data)
-        return req.json()
-
-    def retrieve_user(self, user_id):
-        url = f"{self.API_ENDPOINT}/users/{user_id}"
-        req = self.session.get(url)
-        return req.json()
-
-    def list_users(self):
-        url = f"{self.API_ENDPOINT}/users"
-        req = self.session.get(url)
-        return req.json()
-
-    def search(self, data):
-        url = f"{self.API_ENDPOINT}/search"
-        req = self.session.post(url, data=data)
-        return req.json()
+        return UsersClient(self)
