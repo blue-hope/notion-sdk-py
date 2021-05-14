@@ -28,7 +28,7 @@ import os
 from notion.api import Notion
 
 # Initializing a client
-const notion = Notion(auth=os.getenv("AUTH_TOKEN"))
+notion = Notion(auth=os.getenv("AUTH_TOKEN"))
 
 # retrieve databases
 notion.retrieve_database(database_id="897e5a76-ae52-4b48-9fdf-e71f5945d1af");
