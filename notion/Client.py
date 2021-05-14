@@ -32,7 +32,7 @@ class RequestParameters:
     auth: str
 
 
-class Client(object):
+class Client:
     DEFAULT_NOTION_VERSION = "2021-05-13"
 
     def __init__(self, options: Union[ClientOptions, dict]):
@@ -64,13 +64,15 @@ class Client(object):
 
     async def request(self, request_parameters: RequestParameters):
         try:
-            self.http.build_request(
+            response = await self.http.build_request(
                 method=request_parameters.method,
                 path=request_parameters.path,
                 data=request_parameters.body,
                 params=request_parameters.query,
                 headers=self._auth_as_header(request_parameters.auth),
             )
+            response.raise_for_status()
+            return response
         except Exception as e:
             request_error = build_request_error(e)
             if request_error is None:
