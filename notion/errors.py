@@ -26,7 +26,7 @@ class HTTPResponseError(Exception):
     headers: httpx.Headers
     body: str
 
-    def __init__(self, response: httpx.Response, message: str):
+    def __init__(self, response: httpx.Response, message: str = None):
         super().__init__(
             message
             or f"Request to Notion API failed with status: {response.status_code}"
@@ -101,7 +101,8 @@ def parse_api_error_response_body(body: dict) -> Union[APIErrorResponseBody, Non
 
 
 def is_api_error_code(code: str) -> bool:
-    return type(code) == str and code in list(map(int, APIErrorCode))
+    codes = [error_code.value for error_code in APIErrorCode]
+    return type(code) == str and code in codes
 
 
 def is_timeout_error(e: Exception) -> bool:
